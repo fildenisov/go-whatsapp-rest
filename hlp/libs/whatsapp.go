@@ -5,17 +5,154 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"os"
 	"strings"
 	"time"
 
-	whatsapp "github.com/Rhymen/go-whatsapp"
+	"github.com/Rhymen/go-whatsapp"
 	waproto "github.com/Rhymen/go-whatsapp/binary/proto"
-	qrcode "github.com/skip2/go-qrcode"
+	"github.com/skip2/go-qrcode"
 
 	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
 )
+
+type waHandler struct {
+	c *whatsapp.Conn
+}
+
+//Optional to be implemented. Implement HandleXXXMessage for the types you need.
+func (this *waHandler) HandleTextMessage(message whatsapp.TextMessage) {
+	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+		return
+	}
+
+	_ = HookData(
+		ClearJid(message.Info.RemoteJid),
+		ClearJid(this.c.Info.Wid),
+		"text",
+		message.Text,
+		"",
+	)
+}
+
+func (this *waHandler) HandleImageMessage(message whatsapp.ImageMessage) {
+	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+		return
+	}
+
+	imageData, err := message.Download()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	jidTo := ClearJid(this.c.Info.Wid)
+	path := GetMediaPath(message.Info, jidTo, "images")
+	fileName := fmt.Sprintf("%v/%v.jpg", path, message.Info.Id)
+	err = ioutil.WriteFile(fileName, imageData, 0644)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_ = HookData(
+		ClearJid(message.Info.RemoteJid),
+		ClearJid(this.c.Info.Wid),
+		"image",
+		message.Caption,
+		message.Info.Id+".jpg",
+	)
+}
+
+func (this *waHandler) HandleDocumentMessage(message whatsapp.DocumentMessage) {
+	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+		return
+	}
+
+	imageData, err := message.Download()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	path := GetMediaPath(message.Info, ClearJid(this.c.Info.Wid), "documents")
+	fileName := fmt.Sprintf("%v/%v", path, message.FileName)
+	err = ioutil.WriteFile(fileName, imageData, 0644)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_ = HookData(
+		ClearJid(message.Info.RemoteJid),
+		ClearJid(this.c.Info.Wid),
+		"document",
+		message.Title,
+		message.FileName,
+	)
+}
+
+func (this *waHandler) HandleVideoMessage(message whatsapp.VideoMessage) {
+	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+		return
+	}
+
+	imageData, err := message.Download()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	path := GetMediaPath(message.Info, ClearJid(this.c.Info.Wid), "videos")
+	fileName := fmt.Sprintf("%v/%v.mp4", path, message.Info.Id)
+	err = ioutil.WriteFile(fileName, imageData, 0644)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_ = HookData(
+		ClearJid(message.Info.RemoteJid),
+		ClearJid(this.c.Info.Wid),
+		"video",
+		message.Caption,
+		message.Info.Id+".mp4",
+	)
+}
+
+func (this *waHandler) HandleLocationMessage(message whatsapp.LocationMessage) {
+	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+		return
+	}
+
+	_ = HookData(
+		ClearJid(message.Info.RemoteJid),
+		ClearJid(this.c.Info.Wid),
+		"location",
+		fmt.Sprintf("%v,%v", message.DegreesLatitude, message.DegreesLongitude),
+		"",
+	)
+}
+
+//HandleError needs to be implemented to be a valid WhatsApp handler
+func (h *waHandler) HandleError(err error) {
+
+	if e, ok := err.(*whatsapp.ErrConnectionFailed); ok {
+		log.Printf("Connection failed, underlying error: %v", e.Err)
+		log.Println("Waiting 30sec...")
+		<-time.After(30 * time.Second)
+		log.Println("Reconnecting...")
+		err := h.c.Restore()
+		if err != nil {
+			log.Fatalf("Restore failed: %v", err)
+		}
+	} else {
+		log.Printf("error occoured: %v\n", err)
+	}
+}
 
 var wac = make(map[string]*whatsapp.Conn)
 
@@ -58,7 +195,8 @@ func WASessionInit(jid string, timeout int) error {
 		if err != nil {
 			return err
 		}
-		conn.SetClientName("Go WhatsApp REST", "Go WhatsApp")
+
+		conn.SetClientName(hlp.Config.GetString("LONG_CLIENT_NAME"), hlp.Config.GetString("SHORT_CLIENT_NAME"))
 
 		info, err := WASyncVersion(conn)
 		if err != nil {
@@ -67,6 +205,7 @@ func WASessionInit(jid string, timeout int) error {
 		hlp.LogPrintln(hlp.LogLevelInfo, "whatsapp", info)
 
 		wac[jid] = conn
+		go WAAddHandlers(jid)
 	}
 
 	return nil
@@ -299,6 +438,53 @@ func WAMessageText(jid string, jidDest string, msgText string, msgQuotedID strin
 	return id, nil
 }
 
+func WAMessageLocation(jid string, jidDest string, degreesLatitude float64, degreesLongitude float64, msgQuotedID string, msgQuoted string, msgDelay int) (string, error) {
+	var id string
+
+	if wac[jid] != nil {
+		jidPrefix := "@s.whatsapp.net"
+		if len(strings.SplitN(jidDest, "-", 2)) == 2 {
+			jidPrefix = "@g.us"
+		}
+
+		content := whatsapp.LocationMessage{
+			Info: whatsapp.MessageInfo{
+				RemoteJid: jidDest + jidPrefix,
+			},
+			DegreesLatitude:  degreesLatitude,
+			DegreesLongitude: degreesLongitude,
+		}
+
+		if len(msgQuotedID) != 0 {
+			pntQuotedMsg := &waproto.Message{
+				Conversation: &msgQuoted,
+			}
+
+			content.Info.QuotedMessageID = msgQuotedID
+			content.Info.QuotedMessage = *pntQuotedMsg
+		}
+
+		<-time.After(time.Duration(msgDelay) * time.Second)
+
+		id, err := wac[jid].Send(content)
+		if err != nil {
+			switch strings.ToLower(err.Error()) {
+			case "sending message timed out":
+				return id, nil
+			case "could not send proto: failed to write message: error writing to websocket: websocket: close sent":
+				delete(wac, jid)
+				return "", errors.New("connection is invalid")
+			default:
+				return "", err
+			}
+		}
+	} else {
+		return "", errors.New("connection is invalid")
+	}
+
+	return id, nil
+}
+
 func WAMessageImage(jid string, jidDest string, msgImageStream multipart.File, msgImageType string, msgCaption string, msgQuotedID string, msgQuoted string, msgDelay int) (string, error) {
 	var id string
 
@@ -345,4 +531,108 @@ func WAMessageImage(jid string, jidDest string, msgImageStream multipart.File, m
 	}
 
 	return id, nil
+}
+
+func WAMessageVideo(jid string, jidDest string, msgVideoStream multipart.File, msgVideoType string, msgCaption string, msgQuotedID string, msgQuoted string, msgDelay int) (string, error) {
+	var id string
+
+	if wac[jid] != nil {
+		jidPrefix := "@s.whatsapp.net"
+		if len(strings.SplitN(jidDest, "-", 2)) == 2 {
+			jidPrefix = "@g.us"
+		}
+
+		content := whatsapp.VideoMessage{
+			Info: whatsapp.MessageInfo{
+				RemoteJid: jidDest + jidPrefix,
+			},
+			Content: msgVideoStream,
+			Type:    msgVideoType,
+			Caption: msgCaption,
+		}
+
+		if len(msgQuotedID) != 0 {
+			pntQuotedMsg := &waproto.Message{
+				Conversation: &msgQuoted,
+			}
+
+			content.Info.QuotedMessageID = msgQuotedID
+			content.Info.QuotedMessage = *pntQuotedMsg
+		}
+
+		<-time.After(time.Duration(msgDelay) * time.Second)
+
+		id, err := wac[jid].Send(content)
+		if err != nil {
+			switch strings.ToLower(err.Error()) {
+			case "sending message timed out":
+				return id, nil
+			case "could not send proto: failed to write message: error writing to websocket: websocket: close sent":
+				delete(wac, jid)
+				return "", errors.New("connection is invalid")
+			default:
+				return "", err
+			}
+		}
+	} else {
+		return "", errors.New("connection is invalid")
+	}
+
+	return id, nil
+}
+
+func WAMessageDocument(jid string, jidDest string, msgDocumentStream multipart.File, msgDocumentType string, msgDocumentFileName string, msgQuotedID string, msgQuoted string, msgDelay int) (string, error) {
+	var id string
+
+	if wac[jid] != nil {
+		jidPrefix := "@s.whatsapp.net"
+		if len(strings.SplitN(jidDest, "-", 2)) == 2 {
+			jidPrefix = "@g.us"
+		}
+
+		content := whatsapp.DocumentMessage{
+			Info: whatsapp.MessageInfo{
+				RemoteJid: jidDest + jidPrefix,
+			},
+			Content:  msgDocumentStream,
+			Type:     msgDocumentType,
+			FileName: msgDocumentFileName,
+			Title:    msgDocumentFileName,
+		}
+
+		if len(msgQuotedID) != 0 {
+			pntQuotedMsg := &waproto.Message{
+				Conversation: &msgQuoted,
+			}
+
+			content.Info.QuotedMessageID = msgQuotedID
+			content.Info.QuotedMessage = *pntQuotedMsg
+		}
+
+		<-time.After(time.Duration(msgDelay) * time.Second)
+
+		id, err := wac[jid].Send(content)
+		if err != nil {
+			switch strings.ToLower(err.Error()) {
+			case "sending message timed out":
+				return id, nil
+			case "could not send proto: failed to write message: error writing to websocket: websocket: close sent":
+				delete(wac, jid)
+				return "", errors.New("connection is invalid")
+			default:
+				return "", err
+			}
+		}
+	} else {
+		return "", errors.New("connection is invalid")
+	}
+
+	return id, nil
+}
+
+func WAAddHandlers(jid string) {
+	//sleep 10 sec to not handle old messages
+	time.Sleep(time.Duration(10) * time.Second)
+	hlp.LogPrintln(hlp.LogLevelInfo, "handlers", "handlers for  "+jid+" added")
+	wac[jid].AddHandler(&waHandler{wac[jid]})
 }

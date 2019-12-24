@@ -1,3 +1,5 @@
 share/store/*.gob
+share/upload/*
 vendor
 !*.gitkeep
+/.idea/*

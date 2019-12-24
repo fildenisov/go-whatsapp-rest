@@ -113,4 +113,16 @@ func configLoadValues() {
 
 	// Authentication Basic Password Value
 	Config.SetDefault("AUTH_BASIC_PASSWORD", "83e4060e-78e1-4fe5-9977-aeeccd46a2b8")
+
+	// Client long name, displayed in official whatsapp client
+	Config.SetDefault("LONG_CLIENT_NAME", "WA REST Client")
+
+	// Client short name, displayed in official whatsapp client
+	Config.SetDefault("SHORT_CLIENT_NAME", "WA REST")
+
+	// If set all incoming messages will proxy to this URL
+	Config.SetDefault("HOOK_URL", "http://0.0.0.0:7301/api/v2/hook/wa/")
+
+	// Set secret to proof that you receive traffic from correct client
+	Config.SetDefault("HOOK_SECRET", "yf6i2qsn.KVtqs6kvAJHBIO&^^&")
 }
