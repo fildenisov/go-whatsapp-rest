@@ -3,7 +3,7 @@ package router
 import (
 	"net/http"
 
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
 )
 
 // HandlerNotFound Function

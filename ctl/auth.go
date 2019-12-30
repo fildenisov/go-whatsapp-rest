@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/auth"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/router"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/auth"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/router"
 )
 
 // GetAuth Function to Get Authorization Token

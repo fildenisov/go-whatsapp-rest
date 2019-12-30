@@ -3,7 +3,7 @@ package libs
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
 	"net/http"
 )
 

@@ -3,9 +3,11 @@ package libs
 import (
 	"fmt"
 	"github.com/Rhymen/go-whatsapp"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 )
 
 func GetMediaPath(info whatsapp.MessageInfo, rootFolder string, mediaType string) string {
@@ -19,4 +21,11 @@ func ClearJid(jid string) string {
 	clearedJid := strings.Replace(jid, "@s.whatsapp.net", "", 1)
 	clearedJid = strings.Replace(clearedJid, "@g.us", "", 1)
 	return strings.Replace(clearedJid, "@c.us", "", 1)
+}
+
+func GetSendMutexSleepMS() time.Duration {
+	rand.Seed(time.Now().UnixNano())
+	min := 3000
+	max := 10000
+	return time.Duration(rand.Intn(max-min+1) + min)
 }

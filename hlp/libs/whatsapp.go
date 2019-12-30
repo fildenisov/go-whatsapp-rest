@@ -10,17 +10,42 @@ import (
 	"mime/multipart"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Rhymen/go-whatsapp"
 	waproto "github.com/Rhymen/go-whatsapp/binary/proto"
 	"github.com/skip2/go-qrcode"
 
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
 )
 
 type waHandler struct {
 	c *whatsapp.Conn
+}
+
+var wac = make(map[string]*whatsapp.Conn)
+
+var wacMutex = make(map[string]*sync.Mutex)
+
+func getWacMutex(jid string) *sync.Mutex {
+	mutex, found := wacMutex[jid]
+	if found {
+		return mutex
+	} else {
+		mutex = &sync.Mutex{}
+		wacMutex[jid] = mutex
+		return mutex
+	}
+}
+
+func sendWithBanProtection(jid string, content interface{}) (string, error) {
+	sendMutex := getWacMutex(jid)
+	sendMutex.Lock()
+	time.Sleep(GetSendMutexSleepMS() * time.Millisecond)
+	id, err := wac[jid].Send(content)
+	sendMutex.Unlock()
+	return id, err
 }
 
 //Optional to be implemented. Implement HandleXXXMessage for the types you need.
@@ -28,7 +53,6 @@ func (this *waHandler) HandleTextMessage(message whatsapp.TextMessage) {
 	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
 		return
 	}
-
 	_ = HookData(
 		ClearJid(message.Info.RemoteJid),
 		ClearJid(this.c.Info.Wid),
@@ -153,8 +177,6 @@ func (h *waHandler) HandleError(err error) {
 		log.Printf("error occoured: %v\n", err)
 	}
 }
-
-var wac = make(map[string]*whatsapp.Conn)
 
 func WASyncVersion(conn *whatsapp.Conn) (string, error) {
 	versionServer, err := whatsapp.CheckCurrentServerVersion()
@@ -419,7 +441,7 @@ func WAMessageText(jid string, jidDest string, msgText string, msgQuotedID strin
 
 		<-time.After(time.Duration(msgDelay) * time.Second)
 
-		id, err := wac[jid].Send(content)
+		id, err := sendWithBanProtection(jid, content)
 		if err != nil {
 			switch strings.ToLower(err.Error()) {
 			case "sending message timed out":
@@ -466,7 +488,7 @@ func WAMessageLocation(jid string, jidDest string, degreesLatitude float64, degr
 
 		<-time.After(time.Duration(msgDelay) * time.Second)
 
-		id, err := wac[jid].Send(content)
+		id, err := sendWithBanProtection(jid, content)
 		if err != nil {
 			switch strings.ToLower(err.Error()) {
 			case "sending message timed out":
@@ -514,7 +536,7 @@ func WAMessageImage(jid string, jidDest string, msgImageStream multipart.File, m
 
 		<-time.After(time.Duration(msgDelay) * time.Second)
 
-		id, err := wac[jid].Send(content)
+		id, err := sendWithBanProtection(jid, content)
 		if err != nil {
 			switch strings.ToLower(err.Error()) {
 			case "sending message timed out":
@@ -562,7 +584,7 @@ func WAMessageVideo(jid string, jidDest string, msgVideoStream multipart.File, m
 
 		<-time.After(time.Duration(msgDelay) * time.Second)
 
-		id, err := wac[jid].Send(content)
+		id, err := sendWithBanProtection(jid, content)
 		if err != nil {
 			switch strings.ToLower(err.Error()) {
 			case "sending message timed out":
@@ -611,7 +633,7 @@ func WAMessageDocument(jid string, jidDest string, msgDocumentStream multipart.F
 
 		<-time.After(time.Duration(msgDelay) * time.Second)
 
-		id, err := wac[jid].Send(content)
+		id, err := sendWithBanProtection(jid, content)
 		if err != nil {
 			switch strings.ToLower(err.Error()) {
 			case "sending message timed out":

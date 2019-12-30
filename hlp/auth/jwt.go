@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/router"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/router"
 )
 
 // ResGetJWT Struct
@@ -84,7 +84,7 @@ func GetJWTToken(payload interface{}) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwtClaimsData{
 		payload.(string),
 		jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+			ExpiresAt: time.Now().Add(1000 * 24 * time.Hour).Unix(),
 		},
 	})
 

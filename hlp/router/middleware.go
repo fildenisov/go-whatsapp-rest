@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
 )
 
 // Router CORS Configuration Struct

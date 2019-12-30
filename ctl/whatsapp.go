@@ -3,6 +3,10 @@ package ctl
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/auth"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/libs"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/router"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -11,11 +15,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/auth"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/libs"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/router"
 )
 
 type reqWhatsAppLogin struct {
@@ -51,7 +50,7 @@ type reqWhatsAppSendLocation struct {
 }
 
 type resWhatsAppSendMessage struct {
-	MessageID string `json:"msgid"`
+	Result bool `json:"result"`
 }
 
 func ConnectAllSessions() {
@@ -222,14 +221,14 @@ func WhatsAppSendText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := libs.WAMessageText(jid, reqBody.MSISDN, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	if err != nil {
-		router.ResponseInternalError(w, err.Error())
-		return
-	}
+	go libs.WAMessageText(jid, reqBody.MSISDN, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
+	//if err != nil {
+	//	router.ResponseInternalError(w, err.Error())
+	//	return
+	//}
 
 	var resBody resWhatsAppSendMessage
-	resBody.MessageID = id
+	resBody.Result = true
 
 	router.ResponseSuccessWithData(w, "", resBody)
 }
@@ -251,14 +250,14 @@ func WhatsAppSendLocation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := libs.WAMessageLocation(jid, reqBody.MSISDN, reqBody.DegreesLatitude, reqBody.DegreesLongitude, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	if err != nil {
-		router.ResponseInternalError(w, err.Error())
-		return
-	}
+	go libs.WAMessageLocation(jid, reqBody.MSISDN, reqBody.DegreesLatitude, reqBody.DegreesLongitude, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
+	//if err != nil {
+	//	router.ResponseInternalError(w, err.Error())
+	//	return
+	//}
 
 	var resBody resWhatsAppSendMessage
-	resBody.MessageID = id
+	resBody.Result = true
 
 	router.ResponseSuccessWithData(w, "", resBody)
 }
@@ -308,14 +307,14 @@ func WhatsAppSendImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := libs.WAMessageImage(jid, reqBody.MSISDN, mpFileStream, mpFileType, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	if err != nil {
-		router.ResponseInternalError(w, err.Error())
-		return
-	}
+	go libs.WAMessageImage(jid, reqBody.MSISDN, mpFileStream, mpFileType, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
+	//if err != nil {
+	//	router.ResponseInternalError(w, err.Error())
+	//	return
+	//}
 
 	var resBody resWhatsAppSendMessage
-	resBody.MessageID = id
+	resBody.Result = true
 
 	router.ResponseSuccessWithData(w, "", resBody)
 }
@@ -365,14 +364,14 @@ func WhatsAppSendVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := libs.WAMessageVideo(jid, reqBody.MSISDN, mpFileStream, mpFileType, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	if err != nil {
-		router.ResponseInternalError(w, err.Error())
-		return
-	}
+	go libs.WAMessageVideo(jid, reqBody.MSISDN, mpFileStream, mpFileType, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
+	//if err != nil {
+	//	router.ResponseInternalError(w, err.Error())
+	//	return
+	//}
 
 	var resBody resWhatsAppSendMessage
-	resBody.MessageID = id
+	resBody.Result = true
 
 	router.ResponseSuccessWithData(w, "", resBody)
 }
@@ -423,14 +422,14 @@ func WhatsAppSendDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := libs.WAMessageDocument(jid, reqBody.MSISDN, mpFileStream, mpFileType, contentParams["filename"], reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	if err != nil {
-		router.ResponseInternalError(w, err.Error())
-		return
-	}
+	go libs.WAMessageDocument(jid, reqBody.MSISDN, mpFileStream, mpFileType, contentParams["filename"], reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
+	//if err != nil {
+	//	router.ResponseInternalError(w, err.Error())
+	//	return
+	//}
 
 	var resBody resWhatsAppSendMessage
-	resBody.MessageID = id
+	resBody.Result = true
 
 	router.ResponseSuccessWithData(w, "", resBody)
 }

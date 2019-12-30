@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp"
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/router"
+	"github.com/fildenisov/go-whatsapp-rest/hlp"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/router"
 )
 
 // ReqGetBasic Struct

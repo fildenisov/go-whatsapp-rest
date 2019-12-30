@@ -3,7 +3,7 @@ package ctl
 import (
 	"net/http"
 
-	"github.com/dimaskiddo/go-whatsapp-rest/hlp/router"
+	"github.com/fildenisov/go-whatsapp-rest/hlp/router"
 )
 
 // GetIndex Function to Show API Information
