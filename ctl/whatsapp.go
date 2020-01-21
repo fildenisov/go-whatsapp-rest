@@ -222,10 +222,6 @@ func WhatsAppSendText(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go libs.WAMessageText(jid, reqBody.MSISDN, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	//if err != nil {
-	//	router.ResponseInternalError(w, err.Error())
-	//	return
-	//}
 
 	var resBody resWhatsAppSendMessage
 	resBody.Result = true
@@ -243,18 +239,12 @@ func WhatsAppSendLocation(w http.ResponseWriter, r *http.Request) {
 	var reqBody reqWhatsAppSendLocation
 	_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
-	fmt.Println(reqBody.DegreesLatitude)
-	fmt.Println(reqBody.DegreesLongitude)
 	if len(reqBody.MSISDN) == 0 || reqBody.DegreesLatitude == 0.0 || reqBody.DegreesLongitude == 0.0 {
 		router.ResponseBadRequest(w, "")
 		return
 	}
 
 	go libs.WAMessageLocation(jid, reqBody.MSISDN, reqBody.DegreesLatitude, reqBody.DegreesLongitude, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	//if err != nil {
-	//	router.ResponseInternalError(w, err.Error())
-	//	return
-	//}
 
 	var resBody resWhatsAppSendMessage
 	resBody.Result = true
@@ -302,16 +292,12 @@ func WhatsAppSendImage(w http.ResponseWriter, r *http.Request) {
 
 	mpFileType := mpFileHeader.Header.Get("Content-Type")
 
-	if len(reqBody.MSISDN) == 0 || len(reqBody.Message) == 0 {
+	if len(reqBody.MSISDN) == 0 {
 		router.ResponseBadRequest(w, "")
 		return
 	}
 
 	go libs.WAMessageImage(jid, reqBody.MSISDN, mpFileStream, mpFileType, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	//if err != nil {
-	//	router.ResponseInternalError(w, err.Error())
-	//	return
-	//}
 
 	var resBody resWhatsAppSendMessage
 	resBody.Result = true
@@ -365,10 +351,6 @@ func WhatsAppSendVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go libs.WAMessageVideo(jid, reqBody.MSISDN, mpFileStream, mpFileType, reqBody.Message, reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	//if err != nil {
-	//	router.ResponseInternalError(w, err.Error())
-	//	return
-	//}
 
 	var resBody resWhatsAppSendMessage
 	resBody.Result = true
@@ -423,10 +405,6 @@ func WhatsAppSendDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go libs.WAMessageDocument(jid, reqBody.MSISDN, mpFileStream, mpFileType, contentParams["filename"], reqBody.QuotedID, reqBody.QuotedMessage, reqBody.Delay)
-	//if err != nil {
-	//	router.ResponseInternalError(w, err.Error())
-	//	return
-	//}
 
 	var resBody resWhatsAppSendMessage
 	resBody.Result = true

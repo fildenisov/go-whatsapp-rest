@@ -9,6 +9,7 @@ import (
 	"log"
 	"mime/multipart"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -48,22 +49,45 @@ func sendWithBanProtection(jid string, content interface{}) (string, error) {
 	return id, err
 }
 
+func (this *waHandler) checkMessage(messageInfo whatsapp.MessageInfo) bool {
+	if messageInfo.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+		return false
+	}
+	lastMessageTimeString := this.c.Store.Chats[messageInfo.RemoteJid].LastMessageTime
+	lastMessageTime, err := strconv.ParseUint(lastMessageTimeString, 10, 64)
+	if err == nil && lastMessageTime >= messageInfo.Timestamp {
+		return false
+	}
+
+	return true
+}
+
+func (this *waHandler) updateLastMessageTime(messageInfo whatsapp.MessageInfo) {
+	chatInfo := this.c.Store.Chats[messageInfo.RemoteJid]
+	chatInfo.LastMessageTime = fmt.Sprint(messageInfo.Timestamp)
+	this.c.Store.Chats[messageInfo.RemoteJid] = chatInfo
+}
+
 //Optional to be implemented. Implement HandleXXXMessage for the types you need.
 func (this *waHandler) HandleTextMessage(message whatsapp.TextMessage) {
-	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+	if !this.checkMessage(message.Info) {
 		return
 	}
+
 	_ = HookData(
+		this.c.Store.Contacts[message.Info.RemoteJid].Notify,
 		ClearJid(message.Info.RemoteJid),
 		ClearJid(this.c.Info.Wid),
 		"text",
 		message.Text,
 		"",
 	)
+	this.c.Read(message.Info.RemoteJid, message.Info.Id)
+	this.updateLastMessageTime(message.Info)
 }
 
 func (this *waHandler) HandleImageMessage(message whatsapp.ImageMessage) {
-	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+	if !this.checkMessage(message.Info) {
 		return
 	}
 
@@ -83,16 +107,19 @@ func (this *waHandler) HandleImageMessage(message whatsapp.ImageMessage) {
 	}
 
 	_ = HookData(
+		this.c.Store.Contacts[message.Info.RemoteJid].Notify,
 		ClearJid(message.Info.RemoteJid),
 		ClearJid(this.c.Info.Wid),
 		"image",
 		message.Caption,
 		message.Info.Id+".jpg",
 	)
+	this.c.Read(message.Info.RemoteJid, message.Info.Id)
+	this.updateLastMessageTime(message.Info)
 }
 
 func (this *waHandler) HandleDocumentMessage(message whatsapp.DocumentMessage) {
-	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+	if !this.checkMessage(message.Info) {
 		return
 	}
 
@@ -111,16 +138,19 @@ func (this *waHandler) HandleDocumentMessage(message whatsapp.DocumentMessage) {
 	}
 
 	_ = HookData(
+		this.c.Store.Contacts[message.Info.RemoteJid].Notify,
 		ClearJid(message.Info.RemoteJid),
 		ClearJid(this.c.Info.Wid),
 		"document",
 		message.Title,
 		message.FileName,
 	)
+	this.c.Read(message.Info.RemoteJid, message.Info.Id)
+	this.updateLastMessageTime(message.Info)
 }
 
 func (this *waHandler) HandleVideoMessage(message whatsapp.VideoMessage) {
-	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+	if !this.checkMessage(message.Info) {
 		return
 	}
 
@@ -139,26 +169,32 @@ func (this *waHandler) HandleVideoMessage(message whatsapp.VideoMessage) {
 	}
 
 	_ = HookData(
+		this.c.Store.Contacts[message.Info.RemoteJid].Notify,
 		ClearJid(message.Info.RemoteJid),
 		ClearJid(this.c.Info.Wid),
 		"video",
 		message.Caption,
 		message.Info.Id+".mp4",
 	)
+	this.c.Read(message.Info.RemoteJid, message.Info.Id)
+	this.updateLastMessageTime(message.Info)
 }
 
 func (this *waHandler) HandleLocationMessage(message whatsapp.LocationMessage) {
-	if message.Info.FromMe || hlp.Config.GetString("HOOK_URL") == "" {
+	if !this.checkMessage(message.Info) {
 		return
 	}
 
 	_ = HookData(
+		this.c.Store.Contacts[message.Info.RemoteJid].Notify,
 		ClearJid(message.Info.RemoteJid),
 		ClearJid(this.c.Info.Wid),
 		"location",
 		fmt.Sprintf("%v,%v", message.DegreesLatitude, message.DegreesLongitude),
 		"",
 	)
+	this.c.Read(message.Info.RemoteJid, message.Info.Id)
+	this.updateLastMessageTime(message.Info)
 }
 
 //HandleError needs to be implemented to be a valid WhatsApp handler
@@ -653,8 +689,8 @@ func WAMessageDocument(jid string, jidDest string, msgDocumentStream multipart.F
 }
 
 func WAAddHandlers(jid string) {
-	//sleep 10 sec to not handle old messages
-	time.Sleep(time.Duration(10) * time.Second)
+	//sleep 5 sec to not handle old messages
+	time.Sleep(time.Duration(5) * time.Second)
 	hlp.LogPrintln(hlp.LogLevelInfo, "handlers", "handlers for  "+jid+" added")
 	wac[jid].AddHandler(&waHandler{wac[jid]})
 }
